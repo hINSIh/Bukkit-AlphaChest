@@ -92,8 +92,15 @@ public class ChestCommands implements CommandExecutor {
 
 	private boolean performSaveChestsCommand(CommandSender sender, String[] args) {
 		if (sender.hasPermission("alphachest.save")) {
-			int savedChests = chestManager.save();
-			Teller.tell(sender, Type.Success, "Saved " + savedChests + " chests.");
+			chestManager.saveAsync((totalCount, currentCount) -> {
+				int quarter = totalCount / 4;
+
+				if (quarter == 0 || currentCount % quarter == 0) {
+					Teller.tell(sender, Type.Info, String.format("%.1f", (double) currentCount / totalCount * 100) + "% [" + currentCount + "/" + totalCount + "]");
+				}
+			}, savedChests -> {
+				Teller.tell(sender, Type.Success, "Saved " + savedChests + " chests.");
+			});
 		} else {
 			Teller.tell(sender, Type.Error, "You are not allowed to use this command.");
 		}

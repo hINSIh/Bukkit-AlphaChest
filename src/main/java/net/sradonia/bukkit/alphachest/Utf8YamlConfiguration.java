@@ -20,7 +20,6 @@ public class Utf8YamlConfiguration extends YamlConfiguration {
 	public Utf8YamlConfiguration() {
 	}
 
-	@Override
 	public void load(InputStream stream) throws IOException, InvalidConfigurationException {
 		Validate.notNull(stream, "Stream cannot be null");
 

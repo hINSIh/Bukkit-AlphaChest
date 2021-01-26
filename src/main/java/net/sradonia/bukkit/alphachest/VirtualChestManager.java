@@ -1,27 +1,35 @@
 package net.sradonia.bukkit.alphachest;
 
-import java.io.*;
-import java.util.HashMap;
+import java.io.File;
+import java.io.FilenameFilter;
+import java.io.IOException;
+import java.util.Arrays;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Map.Entry;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.function.BiConsumer;
+import java.util.function.Consumer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.plugin.java.JavaPlugin;
 
 public class VirtualChestManager {
 	private static final String YAML_CHEST_EXTENSION = ".chest.yml";
 
 	private final File dataFolder;
 	private final Logger logger;
-	private final HashMap<String, Inventory> chests;
+	private final Map<String, Inventory> chests;
+	private boolean isSaving;
 
 	public VirtualChestManager(File dataFolder, Logger logger) {
 		this.logger = logger;
 		this.dataFolder = dataFolder;
 
-		this.chests = new HashMap<String, Inventory>();
+		this.chests = new ConcurrentHashMap<String, Inventory>();
 
 		migrateLegacyFiles();
 		load();
@@ -37,7 +45,7 @@ public class VirtualChestManager {
 			String fileName = file.getName();
 
 			try {
-				String playerName;
+				String playerName = "";
 				Inventory chest;
 
 				// Load old file
@@ -48,9 +56,10 @@ public class VirtualChestManager {
 
 				} else if (fileName.endsWith(".chest.nbt")) {
 					// NBT file format
-					playerName = fileName.substring(0, fileName.length() - 10);
-					chest = FragileInventoryIO.loadFromNBT(file);
-
+					// playerName = fileName.substring(0, fileName.length() - 10);
+					// chest = FragileInventoryIO.loadFromNBT(file);
+					Bukkit.getConsoleSender().sendMessage("§4인크님!!! 이거 제가 수정하기 전 버전으로 돌리세요!!!!! by AlphaChest");
+					continue;
 				} else {
 					continue;
 				}
@@ -72,7 +81,9 @@ public class VirtualChestManager {
 				}
 
 			} catch (NoClassDefFoundError e) {
-				// we might get a NoClassDefFoundError when calling FragileInventoryIO.loadFromNBT() for unsupported CraftBukkit/Minecraft versions!
+				// we might get a NoClassDefFoundError when calling
+				// FragileInventoryIO.loadFromNBT() for unsupported CraftBukkit/Minecraft
+				// versions!
 				logger.warning("Couldn't migrate chest file [" + fileName + "] using this CraftBukkit/Minecraft version!");
 			} catch (Exception e) {
 				logger.log(Level.WARNING, "Couldn't migrate chest file: " + fileName, e);
@@ -104,48 +115,85 @@ public class VirtualChestManager {
 		logger.info("loaded " + chests.size() + " chests");
 	}
 
+	public boolean isSaving() {
+		return isSaving;
+	}
+
 	/**
 	 * Saves all existing chests to the data folder.
 	 * 
 	 * @return the number of successfully written chests
 	 */
-	public int save() {
-		int savedChests = 0;
-
-		dataFolder.mkdirs();
-
-		Iterator<Entry<String, Inventory>> chestIterator = chests.entrySet().iterator();
-		while (chestIterator.hasNext()) {
-			final Entry<String, Inventory> entry = chestIterator.next();
-			final String playerName = entry.getKey();
-			final Inventory chest = entry.getValue();
-
-			final File chestFile = new File(dataFolder, playerName + YAML_CHEST_EXTENSION);
-			if (chest == null) {
-				// Chest got removed, so we have to delete the file.
-				chestFile.delete();
-				chestIterator.remove();
-
-			} else {
-				try {
-					// Write the chest file in YAML format
-					InventoryIO.saveToYaml(chest, chestFile);
-
-					savedChests++;
-				} catch (IOException e) {
-					logger.log(Level.WARNING, "Couldn't save chest file: " + chestFile.getName(), e);
-				}
-			}
+	public void saveAsync(BiConsumer<Integer, Integer> progressCallback, Consumer<Integer> completeCallback) {
+		if (isSaving) {
+			return;
 		}
 
-		return savedChests;
+		Bukkit.getScheduler().runTaskAsynchronously(JavaPlugin.getPlugin(AlphaChestPlugin.class), () -> {
+			save(progressCallback, completeCallback);
+		});
+	}
+
+	public void save(BiConsumer<Integer, Integer> progressCallback, Consumer<Integer> completeCallback) {
+		if (isSaving) {
+			return;
+		}
+
+		try {
+			isSaving = true;
+			int totalChests = chests.size();
+			int savedChests = 0;
+
+			dataFolder.mkdirs();
+
+			Iterator<Entry<String, Inventory>> chestIterator = chests.entrySet().iterator();
+			while (chestIterator.hasNext()) {
+				final Entry<String, Inventory> entry = chestIterator.next();
+				final String playerName = entry.getKey();
+				final Inventory chest = entry.getValue();
+
+				final File chestFile = new File(dataFolder, playerName + YAML_CHEST_EXTENSION);
+				if (chest == null) {
+					// Chest got removed, so we have to delete the file.
+					chestFile.delete();
+					chestIterator.remove();
+
+				} else {
+					try {
+						// Write the chest file in YAML format
+						InventoryIO.saveToYaml(chest, chestFile);
+
+						savedChests++;
+
+						if (progressCallback != null) {
+							progressCallback.accept(totalChests, savedChests);
+						}
+					} catch (IOException e) {
+						logger.log(Level.WARNING, "Couldn't save chest file: " + chestFile.getName(), e);
+					}
+				}
+			}
+
+			if (completeCallback != null) {
+				completeCallback.accept(savedChests);
+			}
+
+			isSaving = false;
+		} catch (Exception ex) {
+			Bukkit.broadcastMessage(ex.getMessage());
+			Arrays.stream(ex.getStackTrace()).map(Object::toString).forEach(Bukkit::broadcastMessage);
+			ex.printStackTrace();
+			Bukkit.broadcastMessage("§4§l심각: 창고 플러그인에서 알립니다.");
+			Bukkit.broadcastMessage("§c창고 자동 저장 중 예기치 못한 에러가 발생하였으므로 모든 유저분들께서는 창고를 열어 스크린샷 저장 해주시고 총관리자(tn9945)님께 연락하여 주시기 바랍니다.");
+			isSaving = false;
+		}
 	}
 
 	/**
 	 * Gets a player's virtual chest.
 	 * 
 	 * @param playerName
-	 *        the name of the player
+	 *            the name of the player
 	 * @return the player's virtual chest.
 	 */
 	public Inventory getChest(String playerName) {
@@ -163,7 +211,7 @@ public class VirtualChestManager {
 	 * Clears a player's virtual chest.
 	 * 
 	 * @param playerName
-	 *        the name of the player
+	 *            the name of the player
 	 */
 	public void removeChest(String playerName) {
 		// Put a null to the map so we remember to delete the file when saving!
