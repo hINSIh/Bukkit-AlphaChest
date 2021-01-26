@@ -6,25 +6,25 @@ import org.bukkit.command.CommandSender;
 public class Teller {
 
 	public enum Type {
-		Info, Success, Warning, Error, Misc;
+		INFO, SUCCESS, WARNING, ERROR, MISC;
 	}
 
 	public static void tell(CommandSender sender, Type type, String message) {
 		ChatColor color = ChatColor.WHITE;
 		switch (type) {
-		case Info:
+		case INFO:
 			color = ChatColor.WHITE;
 			break;
-		case Success:
+		case SUCCESS:
 			color = ChatColor.DARK_GREEN;
 			break;
-		case Warning:
+		case WARNING:
 			color = ChatColor.GOLD;
 			break;
-		case Error:
+		case ERROR:
 			color = ChatColor.DARK_RED;
 			break;
-		case Misc:
+		case MISC:
 			color = ChatColor.DARK_BLUE;
 		}
 

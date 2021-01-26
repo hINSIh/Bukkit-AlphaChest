@@ -1,61 +1,48 @@
 package net.sradonia.bukkit.alphachest;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStreamWriter;
-import java.nio.charset.Charset;
-
+import com.google.common.io.Files;
 import org.apache.commons.lang.Validate;
 import org.bukkit.configuration.InvalidConfigurationException;
 import org.bukkit.configuration.file.YamlConfiguration;
 
-import com.google.common.io.Files;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 
 public class Utf8YamlConfiguration extends YamlConfiguration {
 
-	public Utf8YamlConfiguration() {
-	}
+    public Utf8YamlConfiguration() {
+    }
 
-	public void load(InputStream stream) throws IOException, InvalidConfigurationException {
-		Validate.notNull(stream, "Stream cannot be null");
+    public void load(InputStream stream) throws IOException, InvalidConfigurationException {
+        Validate.notNull(stream, "Stream cannot be null");
 
-		InputStreamReader reader = new InputStreamReader(stream, Charset.forName("UTF-8"));
-		StringBuilder builder = new StringBuilder();
-		BufferedReader input = new BufferedReader(reader);
+        InputStreamReader reader = new InputStreamReader(stream, StandardCharsets.UTF_8);
+        StringBuilder builder = new StringBuilder();
 
-		try {
-			String line;
+        try (BufferedReader input = new BufferedReader(reader)) {
+            String line;
 
-			while ((line = input.readLine()) != null) {
-				builder.append(line);
-				builder.append('\n');
-			}
-		} finally {
-			input.close();
-		}
+            while ((line = input.readLine()) != null) {
+                builder.append(line);
+                builder.append('\n');
+            }
+        }
 
-		loadFromString(builder.toString());
-	}
+        loadFromString(builder.toString());
+    }
 
-	@Override
-	public void save(File file) throws IOException {
-		Validate.notNull(file, "File cannot be null");
+    @Override
+    public void save(File file) throws IOException {
+        Validate.notNull(file, "File cannot be null");
 
-		Files.createParentDirs(file);
+        Files.createParentDirs(file);
 
-		String data = saveToString();
+        String data = saveToString();
 
-		FileOutputStream stream = new FileOutputStream(file);
-		OutputStreamWriter writer = new OutputStreamWriter(stream, Charset.forName("UTF-8"));
+        FileOutputStream stream = new FileOutputStream(file);
 
-		try {
-			writer.write(data);
-		} finally {
-			writer.close();
-		}
-	}
+        try (OutputStreamWriter writer = new OutputStreamWriter(stream, StandardCharsets.UTF_8)) {
+            writer.write(data);
+        }
+    }
 }

@@ -1,10 +1,5 @@
 package net.sradonia.bukkit.alphachest;
 
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-import java.io.IOException;
-
 import org.bukkit.Bukkit;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.InvalidConfigurationException;
@@ -12,47 +7,13 @@ import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 
+import java.io.File;
+import java.io.IOException;
+
 /**
  * Utility class to store inventories to file and read them back again.
  */
 public class InventoryIO {
-
-	/**
-	 * Loads an inventory from a plaintext file.
-	 * 
-	 * @param file
-	 *        the text file to load
-	 * @return the loaded inventory
-	 * @throws IOException
-	 *         if the file could not be read
-	 */
-	public static Inventory loadFromTextfile(File file) throws IOException {
-		final Inventory inventory = Bukkit.getServer().createInventory(null, 6 * 9);
-
-		final BufferedReader in = new BufferedReader(new FileReader(file));
-
-		String line;
-		int slot = 0;
-		while ((line = in.readLine()) != null) {
-			if (!line.equals("")) {
-				final String[] parts = line.split(":");
-				try {
-					int type = Integer.parseInt(parts[0]);
-					int amount = Integer.parseInt(parts[1]);
-					short damage = Short.parseShort(parts[2]);
-					if (type != 0) {
-						inventory.setItem(slot, new ItemStack(type, amount, damage));
-					}
-				} catch (NumberFormatException e) {
-					// ignore
-				}
-				++slot;
-			}
-		}
-
-		in.close();
-		return inventory;
-	}
 
 	/**
 	 * Loads an inventory from a YAML configuration file.
