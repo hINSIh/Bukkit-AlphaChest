@@ -1,9 +1,10 @@
 package net.sradonia.bukkit.alphachest.commands;
 
+import net.sradonia.bukkit.alphachest.AlphaChestOpenEvent;
 import net.sradonia.bukkit.alphachest.Teller;
 import net.sradonia.bukkit.alphachest.Teller.Type;
 import net.sradonia.bukkit.alphachest.VirtualChestManager;
-
+import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -44,8 +45,7 @@ public class ChestCommands implements CommandExecutor {
 			if (args.length == 0) {
 				// Open own chest
 				if (sender.hasPermission("alphachest.chest")) {
-					Inventory chest = chestManager.getChest(sender.getName());
-					player.openInventory(chest);
+					openChest(player, sender.getName());
 				} else {
 					Teller.tell(sender, Type.ERROR, "You are not allowed to use this command.");
 				}
@@ -53,8 +53,7 @@ public class ChestCommands implements CommandExecutor {
 			} else if (args.length == 1) {
 				// Open someone else's chest
 				if (sender.hasPermission("alphachest.admin")) {
-					Inventory chest = chestManager.getChest(args[0]);
-					player.openInventory(chest);
+					openChest(player, args[0]);
 				} else {
 					Teller.tell(sender, Type.ERROR, "You are not allowed to open other user's chests.");
 				}
@@ -66,6 +65,12 @@ public class ChestCommands implements CommandExecutor {
 			Teller.tell(sender, Type.ERROR, "Only players are able to open chests.");
 			return true;
 		}
+	}
+
+	private void openChest(Player player, String chestName) {
+		Inventory chest = chestManager.getChest(chestName);
+		Bukkit.getPluginManager().callEvent(new AlphaChestOpenEvent(player, chest));
+		player.openInventory(chest);
 	}
 
 	private boolean performClearChestCommand(CommandSender sender, String[] args) {
